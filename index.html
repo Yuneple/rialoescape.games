@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang='en'>
+  <head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>RIALO: SYSTEM ESCAPE</title>
+    <style>
+      body { margin: 0; background: black; overflow: hidden; }
+      #boot-screen { position: absolute; top:0; left:0; width:100%; height:100%; background:black; color:#00ffff;
+        display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:monospace;
+        font-size:20px; letter-spacing:2px; transition:opacity 1s ease; z-index:1000; }
+      #boot-logo { width:200px; margin-bottom:20px; }
+      .glitch { animation: soft-glitch 0.3s linear; }
+      @keyframes soft-glitch { 0%,100%{filter:none;} 50%{filter:contrast(150%) hue-rotate(10deg) saturate(120%);} }
+    </style>
+    <script src='https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.js'></script>
+  </head>
+  <body>
+    <div id='boot-screen'>
+      <img id='boot-logo' src='assets/logo.png' alt='RIALO Logo'>
+      <p id='boot-text'>BOOTING RIALO SYSTEM...</p>
+    </div>
+    <div id='game-container'></div>
+    <script>
+      const bootText=document.getElementById('boot-text');let dot=0;const bootSound=new Audio('assets/sound/boot-startup.mp3');
+      bootSound.volume=0.6;bootSound.play();
+      const bootInterval=setInterval(()=>{dot=(dot+1)%4;bootText.textContent='BOOTING RIALO SYSTEM'+'.'.repeat(dot);},400);
+      setTimeout(()=>{clearInterval(bootInterval);document.getElementById('boot-screen').style.opacity=0;
+        setTimeout(()=>{document.getElementById('boot-screen').style.display='none';startGame();},1000);},3000);
+
+      function startGame(){
+        const config={type:Phaser.AUTO,width:window.innerWidth,height:window.innerHeight,parent:'game-container',
+          physics:{default:'arcade',arcade:{gravity:{y:600},debug:false}},scene:{preload,create,update}};
+        let player,cursors,bg,score=0,scoreText,gameOver=false,bgMusic,crashSound;const game=new Phaser.Game(config);
+        function preload(){
+          this.load.image('bg','assets/bg.png');this.load.image('player','assets/player.png');
+          this.load.audio('bgm','assets/sound/Chiptronical.ogg');
+          this.load.audio('crash','assets/sound/car-crash-into-wall-heavy-smartsound-fx-1-00-06.mp3');}
+        function create(){
+          bg=this.add.tileSprite(0,0,config.width,config.height,'bg').setOrigin(0,0);
+          player=this.physics.add.sprite(150,config.height-150,'player').setScale(0.6);player.setCollideWorldBounds(true);
+          const ground=this.physics.add.staticGroup();ground.create(config.width/2,config.height-50,null).setScale(4).refreshBody();
+          this.physics.add.collider(player,ground);
+          cursors=this.input.keyboard.createCursorKeys();
+          bgMusic=this.sound.add('bgm',{loop:true,volume:0.6});bgMusic.play();
+          crashSound=this.sound.add('crash',{volume:1.0});
+          scoreText=this.add.text(20,20,'SCORE: 0',{fontFamily:'monospace',fontSize:'24px',fill:'#00ffff'});
+          this.obstacles=this.physics.add.group();
+          this.time.addEvent({delay:2000,callback:addObstacle,callbackScope:this,loop:true});
+          this.physics.add.collider(player,this.obstacles,hitObstacle,null,this);}
+        function update(){if(gameOver)return;bg.tilePositionX+=4;
+          if((cursors.space.isDown||this.input.activePointer.isDown)&&player.body.touching.down){player.setVelocityY(-400);}
+          score+=0.02;scoreText.setText('SCORE: '+Math.floor(score));}
+        function addObstacle(){const obs=this.obstacles.create(config.width,config.height-120,'player').setScale(0.4);
+          obs.setVelocityX(-300);obs.setTint(0xff0000);obs.body.allowGravity=false;}
+        function hitObstacle(player,obs){document.body.classList.add('glitch');crashSound.play();bgMusic.stop();gameOver=true;this.physics.pause();
+          const t=this.add.text(config.width/2,config.height/2,'SYSTEM CORRUPTED\nREBOOT?',{fontFamily:'monospace',fontSize:'32px',fill:'#ff004c',align:'center'}).setOrigin(0.5);
+          this.input.once('pointerdown',()=>location.reload());setTimeout(()=>document.body.classList.remove('glitch'),500);}}
+    </script>
+  </body>
+</html>
