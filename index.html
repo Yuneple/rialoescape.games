@@ -59,200 +59,22 @@ function startGame(){
 
   const game = new Phaser.Game(config);
   let player, logos, logoTimer, bgTile, swordZone, sword;
-  let score = 0, combo = 0, misses = 0;
+  let score = 0, combo = 0;
   let scoreText;
   let bgMusic, slashSound, impactSound, overdriveSound;
   let overdrive = false;
-  const MAX_MISSES = 3;
-  let canMove = true;
   let touchStartX = 0;
 
   function preload(){
-    // Gambar
-this.load.image('bg', 'assets/bg.png');
-this.load.image('logo', 'assets/logo.png');
-this.load.image('player', 'assets/player.png');
-this.load.image('sword', 'assets/sword.png');
-
-// Sound
-this.load.audio('boot', 'assets/sound/boot-startup.mp3');
-this.load.audio('music', 'assets/sound/Chiptronical.ogg');
-this.load.audio('crash', 'assets/sound/car-crash-into-wall-heavy-smartsound-fx-1-00-06.mp3');
-this.load.audio('slash', 'assets/sound/energy-slash.wav');
-this.load.audio('overdrive', 'assets/sound/overdrive.wav');
-
-  function create(){
-    const scene = this;
-    bgTile = scene.add.tileSprite(0,0,config.width,config.height,'bg').setOrigin(0).setDepth(0);
-    bgTile.setScale(Math.max(config.width/800, config.height/600));
-
-    player = scene.physics.add.sprite(config.width/2, config.height - 120, 'player');
-    player.setImmovable(true).setDepth(6);
-    player.displayWidth = Math.min(220, config.width * 0.36);
-    player.scaleY = player.scaleX;
-    player.setCollideWorldBounds(true);
-
-    sword = scene.add.image(player.x + 12, player.y - 40, 'sword').setDepth(7);
-    sword.setScale(Math.min(0.6, config.width/1400));
-    sword.setTint(0x9f00ff).setAlpha(0.9);
-
-    // hitbox zone (invisible)
-    swordZone = scene.add.zone(player.x, player.y - 10, player.displayWidth * 1.25, 64).setOrigin(0.5);
-    scene.physics.add.existing(swordZone, false);
-    swordZone.body.allowGravity = false;
-    swordZone.body.setImmovable(true);
-
-    logos = scene.physics.add.group();
-    logoTimer = scene.time.addEvent({ delay: 900, callback: spawnLogo, callbackScope: scene, loop: true });
-
-    // particles
-    const particles = scene.add.particles('logo');
-    const shardEmitter = particles.createEmitter({
-      lifespan: {min:300, max:700},
-      speed: {min:150, max:350},
-      scale: {start:0.6, end:0},
-      gravityY: 300,
-      quantity: 8,
-      blendMode: 'ADD',
-      on: false
-    });
-
-    const trailParticles = scene.add.particles('logo');
-    const trailEmitter = trailParticles.createEmitter({
-      x: player.x, y: player.y-20,
-      lifespan: 200,
-      speed: {min:100, max:200},
-      scale: {start:0.3, end:0},
-      quantity: 4,
-      alpha: {start:0.6, end:0},
-      tint: [0x9f00ff,0x0099ff],
-      blendMode: 'ADD',
-      on: false
-    });
-
-    bgMusic = scene.sound.add('bgm', { loop:true, volume:0.45 });
-    slashSound = scene.sound.add('slash', { volume:0.95 });
-    impactSound = scene.sound.add('impact', { volume:0.9 });
-    overdriveSound = scene.sound.add('overdrive', { volume:0.9, loop:true });
-    bgMusic.play().catch(()=>{});
-
-    scoreText = scene.add.text(14,14,'SCORE: 0',{fontFamily:'monospace',fontSize:20,fill:'#00ffff'}).setDepth(10);
-
-    scene.input.on('pointerdown', p=>{ touchStartX = p.x; });
-    scene.input.on('pointerup', p=>{ handleSwipe(p.x - touchStartX); });
-    scene.input.keyboard.on('keydown-LEFT', ()=> movePlayer(-1));
-    scene.input.keyboard.on('keydown-RIGHT', ()=> movePlayer(1));
-
-    scene.physics.add.overlap(swordZone, logos, (zone, logo)=>{
-      if(!logo.active) return;
-      shardEmitter.emitParticleAt(logo.x, logo.y, 18);
-      slashSound.play().catch(()=>{});
-      impactSound.play({volume:0.35}).catch(()=>{});
-      score += 10; combo++;
-      scoreText.setText('SCORE: '+score+(combo>1?'  COMBO x'+combo:''));
-      trailEmitter.emitParticleAt(player.x, player.y-30, 10);
-      if(!overdrive && combo >= 10){ activateOverdrive(scene); }
-      logo.destroy();
-    }, null, scene);
-
-    scene.events.on('postupdate', ()=>{
-      sword.x = player.x + 12;
-      sword.y = player.y - 40;
-      swordZone.x = player.x;
-      swordZone.y = player.y - 10;
-    });
-
-    scene.time.addEvent({
-      delay:80, loop:true, callback:()=>{
-        if(overdrive) trailEmitter.emitParticleAt(player.x, player.y-30, 3);
-      }
-    });
-
-    function spawnLogo(){
-      const x = Phaser.Math.Between(60, config.width - 60);
-      const l = logos.create(x, -60, 'logo');
-      l.setVelocityY(Phaser.Math.Between(overdrive?400:220, overdrive?560:360));
-      l.setDepth(4);
-      l.setScale(Math.min(0.72, config.width/900));
-      l.body.setAllowGravity(false);
-      l.setTint(0xffffff);
-    }
-
-    function movePlayer(dir){
-      if(!canMove)return;
-      const step=Math.max(64,config.width*0.18);
-      const newX=Phaser.Math.Clamp(player.x+dir*step,80,config.width-80);
-      player.x=newX;
-      scene.cameras.main.shake(60,0.002*Math.abs(dir));
-    }
-
-    function handleSwipe(dx){
-      if(Math.abs(dx)<30)return;
-      movePlayer(dx>0?1:-1);
-      if(!bgMusic.isPlaying) bgMusic.play().catch(()=>{});
-      if(overdrive&&!overdriveSound.isPlaying) overdriveSound.play().catch(()=>{});
-    }
-
-    function activateOverdrive(scene){
-      overdrive=true;
-      scene.cameras.main.setBackgroundColor(0x130014);
-      overdriveSound.play().catch(()=>{});
-      logoTimer.remove(false);
-      logoTimer=scene.time.addEvent({delay:600,callback:spawnLogo,callbackScope:scene,loop:true});
-      scene.time.addEvent({
-        delay:900,loop:true,callback:()=>{
-          if(!overdrive)return;
-          scene.cameras.main.flash(120,140,40,220);
-          scene.cameras.main.shake(160,0.007);
-        }
-      });
-    }
-  }
-}
-</script>
-</body>
-</html>
-setTimeout(()=>{
-  clearInterval(bootInterval);
-  const bs = document.getElementById('boot-screen');
-  bs.style.opacity = 0;
-  setTimeout(()=>{ bs.style.display = 'none'; startGame(); }, 900);
-}, 2600);
-
-function startGame(){
-  const WIDTH = window.innerWidth;
-  const HEIGHT = window.innerHeight;
-
-  const config = {
-    type: Phaser.AUTO,
-    parent: 'game-container',
-    width: WIDTH,
-    height: HEIGHT,
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    backgroundColor: '#000000',
-    physics: { default: 'arcade', arcade: { debug: false } },
-    scene: { preload, create, update }
-  };
-
-  const game = new Phaser.Game(config);
-  let player, logos, logoTimer, bgTile, swordZone, sword;
-  let score = 0, combo = 0, misses = 0;
-  let scoreText;
-  let bgMusic, slashSound, impactSound, overdriveSound;
-  let overdrive = false;
-  const MAX_MISSES = 3;
-  let canMove = true;
-  let touchStartX = 0;
-
-  function preload(){
-    this.load.image('bg','assets/bg.png');
-    this.load.image('logo','assets/logo.png');
-    this.load.image('player','assets/player.png');
-    this.load.image('sword','assets/sword.png');
-    this.load.audio('bgm','assets/sound/Chiptronical.ogg');
-    this.load.audio('slash','assets/sound/energy-slash.wav');
-    this.load.audio('impact','assets/sound/car-crash-into-wall-heavy-smartsound-fx-1-00-06.mp3');
-    this.load.audio('overdrive','assets/sound/overdrive.wav');
+    this.load.image('bg', 'assets/bg.png');
+    this.load.image('logo', 'assets/logo.png');
+    this.load.image('player', 'assets/player.png');
+    this.load.image('sword', 'assets/sword.png');
+    this.load.audio('boot', 'assets/sound/boot-startup.mp3');
+    this.load.audio('music', 'assets/sound/Chiptronical.ogg');
+    this.load.audio('crash', 'assets/sound/car-crash-into-wall-heavy-smartsound-fx-1-00-06.mp3');
+    this.load.audio('slash', 'assets/sound/energy-slash.wav');
+    this.load.audio('overdrive', 'assets/sound/overdrive.wav');
   }
 
   function create(){
@@ -270,7 +92,6 @@ function startGame(){
     sword.setScale(Math.min(0.6, config.width/1400));
     sword.setTint(0x9f00ff).setAlpha(0.9);
 
-    // hitbox zone (invisible)
     swordZone = scene.add.zone(player.x, player.y - 10, player.displayWidth * 1.25, 64).setOrigin(0.5);
     scene.physics.add.existing(swordZone, false);
     swordZone.body.allowGravity = false;
@@ -279,34 +100,9 @@ function startGame(){
     logos = scene.physics.add.group();
     logoTimer = scene.time.addEvent({ delay: 900, callback: spawnLogo, callbackScope: scene, loop: true });
 
-    // particles
-    const particles = scene.add.particles('logo');
-    const shardEmitter = particles.createEmitter({
-      lifespan: {min:300, max:700},
-      speed: {min:150, max:350},
-      scale: {start:0.6, end:0},
-      gravityY: 300,
-      quantity: 8,
-      blendMode: 'ADD',
-      on: false
-    });
-
-    const trailParticles = scene.add.particles('logo');
-    const trailEmitter = trailParticles.createEmitter({
-      x: player.x, y: player.y-20,
-      lifespan: 200,
-      speed: {min:100, max:200},
-      scale: {start:0.3, end:0},
-      quantity: 4,
-      alpha: {start:0.6, end:0},
-      tint: [0x9f00ff,0x0099ff],
-      blendMode: 'ADD',
-      on: false
-    });
-
-    bgMusic = scene.sound.add('bgm', { loop:true, volume:0.45 });
+    bgMusic = scene.sound.add('music', { loop:true, volume:0.45 });
     slashSound = scene.sound.add('slash', { volume:0.95 });
-    impactSound = scene.sound.add('impact', { volume:0.9 });
+    impactSound = scene.sound.add('crash', { volume:0.9 });
     overdriveSound = scene.sound.add('overdrive', { volume:0.9, loop:true });
     bgMusic.play().catch(()=>{});
 
@@ -319,68 +115,46 @@ function startGame(){
 
     scene.physics.add.overlap(swordZone, logos, (zone, logo)=>{
       if(!logo.active) return;
-      shardEmitter.emitParticleAt(logo.x, logo.y, 18);
       slashSound.play().catch(()=>{});
       impactSound.play({volume:0.35}).catch(()=>{});
       score += 10; combo++;
       scoreText.setText('SCORE: '+score+(combo>1?'  COMBO x'+combo:''));
-      trailEmitter.emitParticleAt(player.x, player.y-30, 10);
       if(!overdrive && combo >= 10){ activateOverdrive(scene); }
       logo.destroy();
     }, null, scene);
+  }
 
-    scene.events.on('postupdate', ()=>{
-      sword.x = player.x + 12;
-      sword.y = player.y - 40;
-      swordZone.x = player.x;
-      swordZone.y = player.y - 10;
-    });
+  function update(){
+    bgTile.tilePositionY -= 0.5;
+  }
 
-    scene.time.addEvent({
-      delay:80, loop:true, callback:()=>{
-        if(overdrive) trailEmitter.emitParticleAt(player.x, player.y-30, 3);
-      }
-    });
+  function spawnLogo(){
+    const scene = this.scene;
+    const x = Phaser.Math.Between(60, config.width - 60);
+    const l = logos.create(x, -60, 'logo');
+    l.setVelocityY(Phaser.Math.Between(overdrive?400:220, overdrive?560:360));
+    l.setDepth(4);
+    l.setScale(Math.min(0.72, config.width/900));
+    l.body.setAllowGravity(false);
+  }
 
-    function spawnLogo(){
-      const x = Phaser.Math.Between(60, config.width - 60);
-      const l = logos.create(x, -60, 'logo');
-      l.setVelocityY(Phaser.Math.Between(overdrive?400:220, overdrive?560:360));
-      l.setDepth(4);
-      l.setScale(Math.min(0.72, config.width/900));
-      l.body.setAllowGravity(false);
-      l.setTint(0xffffff);
-    }
+  function movePlayer(dir){
+    const step=Math.max(64,config.width*0.18);
+    const newX=Phaser.Math.Clamp(player.x+dir*step,80,config.width-80);
+    player.x=newX;
+  }
 
-    function movePlayer(dir){
-      if(!canMove)return;
-      const step=Math.max(64,config.width*0.18);
-      const newX=Phaser.Math.Clamp(player.x+dir*step,80,config.width-80);
-      player.x=newX;
-      scene.cameras.main.shake(60,0.002*Math.abs(dir));
-    }
+  function handleSwipe(dx){
+    if(Math.abs(dx)<30)return;
+    movePlayer(dx>0?1:-1);
+  }
 
-    function handleSwipe(dx){
-      if(Math.abs(dx)<30)return;
-      movePlayer(dx>0?1:-1);
-      if(!bgMusic.isPlaying) bgMusic.play().catch(()=>{});
-      if(overdrive&&!overdriveSound.isPlaying) overdriveSound.play().catch(()=>{});
-    }
-
-    function activateOverdrive(scene){
-      overdrive=true;
-      scene.cameras.main.setBackgroundColor(0x130014);
-      overdriveSound.play().catch(()=>{});
-      logoTimer.remove(false);
-      logoTimer=scene.time.addEvent({delay:600,callback:spawnLogo,callbackScope:scene,loop:true});
-      scene.time.addEvent({
-        delay:900,loop:true,callback:()=>{
-          if(!overdrive)return;
-          scene.cameras.main.flash(120,140,40,220);
-          scene.cameras.main.shake(160,0.007);
-        }
-      });
-    }
+  function activateOverdrive(scene){
+    overdrive=true;
+    scene.cameras.main.setBackgroundColor(0x130014);
+    overdriveSound.play().catch(()=>{});
+    logoTimer.remove(false);
+    logoTimer=scene.time.addEvent({delay:600,callback:spawnLogo,callbackScope:scene,loop:true});
   }
 }
 </script>
