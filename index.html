@@ -224,4 +224,12 @@ function startGame(){
 }
 </script>
 </body>
+</html>    scene.cameras.main.setBackgroundColor(0x130014);
+    overdriveSound.play().catch(()=>{});
+    logoTimer.remove(false);
+    logoTimer = scene.time.addEvent({ delay: 600, callback: spawnLogo, callbackScope: scene, loop: true });
+  }
+}
+</script>
+</body>
 </html>
