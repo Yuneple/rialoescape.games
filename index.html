@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>RIALO: Pattern Slash — v2.4 ⚙️ Touch Control Fix</title>
+  <title>RIALO: Pattern Slash — v2.5 ⚙️ Visible Controls</title>
   <style>
     html,body{
       height:100%;
@@ -23,17 +23,41 @@
     #boot-logo{width:160px;margin-bottom:10px;filter:drop-shadow(0 0 10px #00ffff);}
     #boot-text{color:#9af;text-align:center;font-size:14px}
     .small{font-size:12px;color:#99f}
-    @keyframes auraPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.4) hue-rotate(20deg)}}
     .aura{animation:auraPulse 1.2s infinite}
+    @keyframes auraPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.4) hue-rotate(20deg)}}
+
+    /* === MOBILE BUTTONS === */
+    .control-btn {
+      position:absolute;
+      bottom:20px;
+      width:80px;height:80px;
+      background:rgba(0,255,255,0.15);
+      border:2px solid rgba(0,255,255,0.4);
+      border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:30px;color:#00ffff;
+      z-index:2000;
+      transition:background 0.15s, transform 0.1s;
+    }
+    .control-btn:active {
+      background:rgba(0,255,255,0.35);
+      transform:scale(0.95);
+    }
+    #btn-left{left:20px;}
+    #btn-right{right:20px;}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.js"></script>
 </head>
 <body>
   <div id="boot-screen">
     <img id="boot-logo" src="assets/logo.png" alt="RIALO Logo">
-    <div id="boot-text">RIALO SYSTEM v2.4<br><span class="small">BOOTING... YUURA [ONLINE]</span></div>
+    <div id="boot-text">RIALO SYSTEM v2.5<br><span class="small">BOOTING... YUURA [ONLINE]</span></div>
   </div>
   <div id="game-container"></div>
+
+  <!-- 🔹 Visible Controls -->
+  <div id="btn-left" class="control-btn">◀</div>
+  <div id="btn-right" class="control-btn">▶</div>
 
 <script>
 const bootSound = new Audio('assets/sound/boot-startup.mp3');
@@ -43,7 +67,7 @@ bootSound.play().catch(()=>{});
 const bootTextEl = document.getElementById('boot-text');
 let dots=0;
 const bootInterval=setInterval(()=>{dots=(dots+1)%4;
-  bootTextEl.innerHTML='RIALO SYSTEM v2.4<br><span class="small">BOOTING'+'.'.repeat(dots)+'</span>';
+  bootTextEl.innerHTML='RIALO SYSTEM v2.5<br><span class="small">BOOTING'+'.'.repeat(dots)+'</span>';
 },360);
 setTimeout(()=>{
   clearInterval(bootInterval);
@@ -114,18 +138,25 @@ function startGame(){
       fontFamily:'monospace',fontSize:40,fill:'#ff0066',fontStyle:'bold'
     }).setOrigin(0.5).setAlpha(0).setDepth(15);
 
-    // === TOUCHPAD CONTROL ===
-    scene.input.on('pointerdown',p=>{
-      moveDir=(p.x<config.width/2)?-1:1;
-    });
-    scene.input.on('pointerup',()=>{moveDir=0;});
-    scene.input.on('pointerout',()=>{moveDir=0;});
+    // === MOBILE BUTTON LOGIC ===
+    const btnLeft=document.getElementById('btn-left');
+    const btnRight=document.getElementById('btn-right');
+    const startMove=(dir)=>{moveDir=dir;};
+    const stopMove=()=>{moveDir=0;};
 
-    // === Keyboard Control (for PC)
+    btnLeft.addEventListener('touchstart',()=>startMove(-1));
+    btnLeft.addEventListener('touchend',stopMove);
+    btnLeft.addEventListener('touchcancel',stopMove);
+
+    btnRight.addEventListener('touchstart',()=>startMove(1));
+    btnRight.addEventListener('touchend',stopMove);
+    btnRight.addEventListener('touchcancel',stopMove);
+
+    // === Keyboard Support (for PC)
     scene.input.keyboard.on('keydown-LEFT',()=>{moveDir=-1;});
     scene.input.keyboard.on('keydown-RIGHT',()=>{moveDir=1;});
-    scene.input.keyboard.on('keyup-LEFT',()=>{moveDir=0;});
-    scene.input.keyboard.on('keyup-RIGHT',()=>{moveDir=0;});
+    scene.input.keyboard.on('keyup-LEFT',stopMove);
+    scene.input.keyboard.on('keyup-RIGHT',stopMove);
 
     // === Collider ===
     scene.physics.add.overlap(player,logos,(pl,logo)=>{
