@@ -1,0 +1,1 @@
+RIALO: PATTERN SLASH - Energy Slash\nReplace placeholders in /assets and /assets/sound with your real assets. Upload to GitHub Pages root.
