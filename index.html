@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>RIALO: PATTERN SLASH — PERFECT SMOOTH ⚡</title>
+  <title>RIALO: PATTERN SLASH — CLEAN CHARACTER ⚡</title>
   <style>
     html,body{
       height:100%;
@@ -40,7 +40,7 @@
 <body>
   <div id="boot-screen">
     <img id="boot-logo" src="assets/logo.png" alt="RIALO Logo">
-    <div id="boot-text">RIALO SYSTEM v1.07<br><span class="small">BOOTING... YUURA [ONLINE]</span></div>
+    <div id="boot-text">RIALO SYSTEM v1.08<br><span class="small">BOOTING... YUURA [ONLINE]</span></div>
   </div>
   <div id="game-container"></div>
 
@@ -53,7 +53,7 @@ const bootTextEl = document.getElementById('boot-text');
 let dots = 0;
 const bootInterval = setInterval(()=>{
   dots = (dots+1)%4;
-  bootTextEl.innerHTML = 'RIALO SYSTEM v1.07<br><span class="small">BOOTING' + '.'.repeat(dots) + '</span>';
+  bootTextEl.innerHTML = 'RIALO SYSTEM v1.08<br><span class="small">BOOTING' + '.'.repeat(dots) + '</span>';
 }, 360);
 
 setTimeout(()=>{
@@ -79,7 +79,7 @@ function startGame(){
   };
 
   const game = new Phaser.Game(config);
-  let player, logos, logoTimer, bgTile, swordZone, sword, scene;
+  let player, logos, logoTimer, bgTile, scene;
   let score = 0, combo = 0;
   let scoreText;
   let bgMusic, slashSound, impactSound, overdriveSound;
@@ -90,7 +90,6 @@ function startGame(){
     this.load.image('bg', 'assets/bg.png');
     this.load.image('logo', 'assets/logo.png');
     this.load.image('player', 'assets/player.png');
-    this.load.image('sword', 'assets/sword.png');
     this.load.audio('music', 'assets/sound/Chiptronical.ogg');
     this.load.audio('slash', 'assets/sound/energy-slash.wav');
     this.load.audio('crash', 'assets/sound/car-crash-into-wall-heavy-smartsound-fx-1-00-06.mp3');
@@ -101,9 +100,7 @@ function startGame(){
     scene = this;
 
     // === Background ===
-    bgTile = scene.add.tileSprite(0,0,config.width,config.height,'bg')
-      .setOrigin(0)
-      .setDepth(0);
+    bgTile = scene.add.tileSprite(0,0,config.width,config.height,'bg').setOrigin(0).setDepth(0);
 
     // === Player ===
     player = scene.physics.add.sprite(config.width/2, config.height - 120, 'player');
@@ -112,20 +109,11 @@ function startGame(){
     player.scaleY = player.scaleX;
     player.setCollideWorldBounds(true);
 
-    // === Sword ===
-    sword = scene.add.image(player.x + 12, player.y - 40, 'sword').setDepth(7);
-    sword.setScale(Math.min(0.6, config.width/1400));
-    sword.setTint(0x9f00ff).setAlpha(0.9);
-
-    // === Hit Zone ===
-    swordZone = scene.add.zone(player.x, player.y - 10, player.displayWidth * 1.25, 64).setOrigin(0.5);
-    scene.physics.add.existing(swordZone, false);
-    swordZone.body.allowGravity = false;
-    swordZone.body.setImmovable(true);
-
-    // === Groups & Sound ===
+    // === Logo Group ===
     logos = scene.physics.add.group();
     logoTimer = scene.time.addEvent({ delay: 900, callback: spawnLogo, callbackScope: scene, loop: true });
+
+    // === Sound ===
     bgMusic = scene.sound.add('music', { loop:true, volume:0.45 });
     slashSound = scene.sound.add('slash', { volume:0.95 });
     impactSound = scene.sound.add('crash', { volume:0.9 });
@@ -134,18 +122,6 @@ function startGame(){
 
     // === Score Text ===
     scoreText = scene.add.text(14,14,'SCORE: 0',{fontFamily:'monospace',fontSize:20,fill:'#00ffff'}).setDepth(10);
-
-    // === Particle FX ===
-    const hitParticles = scene.add.particles('logo');
-    const hitEmitter = hitParticles.createEmitter({
-      lifespan: 400,
-      speed: {min: 100, max: 400},
-      scale: {start: 0.8, end: 0},
-      quantity: 12,
-      alpha: {start: 1, end: 0},
-      blendMode: 'ADD',
-      on: false
-    });
 
     // === Input Control ===
     scene.input.on('pointerdown', (p) => { touchStartX = p.x; });
@@ -159,26 +135,17 @@ function startGame(){
     scene.input.keyboard.on('keydown-LEFT', () => movePlayer(-1));
     scene.input.keyboard.on('keydown-RIGHT', () => movePlayer(1));
 
-    // === Collision / Slash Detect ===
-    scene.physics.add.overlap(swordZone, logos, (zone, logo)=>{
+    // === Collider ===
+    scene.physics.add.overlap(player, logos, (pl, logo)=>{
       if(!logo.active) return;
       slashSound.play().catch(()=>{});
       impactSound.play({volume:0.35}).catch(()=>{});
-      hitEmitter.emitParticleAt(logo.x, logo.y, 18);
       scene.cameras.main.shake(80, 0.0045);
       score += 10; combo++;
       scoreText.setText('SCORE: '+score+(combo>1?'  COMBO x'+combo:''));
       if(!overdrive && combo >= 10){ activateOverdrive(scene); }
       logo.destroy();
     }, null, scene);
-
-    // === Update Sword Pos ===
-    scene.events.on('postupdate', ()=>{
-      sword.x = player.x + 12;
-      sword.y = player.y - 40;
-      swordZone.x = player.x;
-      swordZone.y = player.y - 10;
-    });
   }
 
   function update(){
@@ -189,7 +156,7 @@ function startGame(){
     const step = Math.max(32, config.width * 0.08);
     const newX = Phaser.Math.Clamp(player.x + dir * step, 60, config.width - 60);
     scene.tweens.add({
-      targets: [player, sword, swordZone],
+      targets: [player],
       x: newX,
       duration: 75,
       ease: 'Sine.easeOut'
@@ -204,27 +171,19 @@ function startGame(){
   function spawnLogo(){
     const x = Phaser.Math.Between(60, config.width - 60);
     const l = logos.create(x, -60, 'logo');
-    const speed = Phaser.Math.Between(240, 480);
-    const scale = Phaser.Math.FloatBetween(0.4, 1.0);
+    const speed = Phaser.Math.Between(240, 460);
+    const scale = Phaser.Math.FloatBetween(0.25, 0.6); // 🔥 ukuran lebih kecil
     const tintColors = [0x9f00ff, 0x0099ff, 0xffffff, 0xff0066, 0x00ffff];
     l.setVelocityY(speed);
     l.setDepth(4);
     l.setScale(scale);
-    l.setAngularVelocity(Phaser.Math.Between(-140, 140));
+    l.setAngularVelocity(Phaser.Math.Between(-100, 100));
     l.setTint(Phaser.Utils.Array.GetRandom(tintColors));
   }
 
   function activateOverdrive(scene){
     overdrive = true;
     scene.cameras.main.setBackgroundColor(0x130014);
-    overdriveSound.play().catch(()=>{});
-    logoTimer.remove(false);
-    logoTimer = scene.time.addEvent({ delay: 600, callback: spawnLogo, callbackScope: scene, loop: true });
-  }
-}
-</script>
-</body>
-</html>    scene.cameras.main.setBackgroundColor(0x130014);
     overdriveSound.play().catch(()=>{});
     logoTimer.remove(false);
     logoTimer = scene.time.addEvent({ delay: 600, callback: spawnLogo, callbackScope: scene, loop: true });
