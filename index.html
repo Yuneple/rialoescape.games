@@ -21,20 +21,176 @@
     .control-btn {
       position: fixed;
       bottom: 30px;
-      width: 65px;
-      height: 65px;
-      background: rgba(255,255,255,0.08);
+      width: 70px;
+      height: 70px;
+      background: rgba(255,255,255,0.1);
       border: 1px solid rgba(255,255,255,0.2);
       border-radius: 50%;
-      color: #0ff;
-      font-size: 28px;
+      color: #00ffff;
+      font-size: 30px;
       text-align: center;
-      line-height: 65px;
+      line-height: 70px;
       z-index: 2000;
       transition: 0.15s;
+      user-select: none;
     }
     .control-btn:active {
-      background: rgba(0,255,255,0.35);
+      background: rgba(0,255,255,0.3);
+      transform: scale(0.9);
+    }
+    #btn-left { left: 25px; }
+    #btn-right { right: 25px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.js"></script>
+</head>
+<body>
+  <div id="game-container"></div>
+  <div id="btn-left" class="control-btn">◀</div>
+  <div id="btn-right" class="control-btn">▶</div>
+
+  <script>
+  const config = {
+    type: Phaser.AUTO,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    parent: 'game-container',
+    physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
+    scene: { preload, create, update }
+  };
+
+  let player, bg, logos, scoreText, bgMusic;
+  let isSlashing = false;
+  let score = 0;
+  let moveLeft = false, moveRight = false;
+  const SPEED = 260;
+
+  const game = new Phaser.Game(config);
+
+  function preload() {
+    this.load.image('bg', 'assets/bg.png');
+    this.load.image('logo', 'assets/logo.png');
+    this.load.image('player_idle', 'assets/player/player_idle.png');
+    this.load.image('player_slash', 'assets/player/player_slash.png');
+
+    this.load.audio('music', 'assets/sound/Chiptronical.ogg');
+    this.load.audio('slash', 'assets/sound/energy-slash.wav');
+    this.load.audio('overdrive', 'assets/sound/overdrive.wav');
+
+    // error catcher biar ketahuan kalau path salah
+    this.load.on('loaderror', (file) => {
+      console.warn('⚠️ Gagal load asset:', file.key, file.src);
+    });
+  }
+
+  function create() {
+    bg = this.add.tileSprite(0, 0, config.width, config.height, 'bg').setOrigin(0).setScrollFactor(0);
+
+    bgMusic = this.sound.add('music', { loop: true, volume: 0.35 });
+    bgMusic.play().catch(()=>{});
+
+    // --- PLAYER SETUP ---
+    player = this.physics.add.sprite(config.width / 2, config.height - 60, 'player_idle').setDepth(5);
+    player.setScale(0.5);
+    player.setOrigin(0.5, 1); // titik origin di kaki
+    player.setCollideWorldBounds(true);
+
+    // --- AURA GLOW ---
+    const aura = this.add.circle(player.x, player.y - 80, 80, 0x9900ff, 0.25).setDepth(4);
+    this.tweens.add({
+      targets: aura,
+      alpha: { from: 0.3, to: 0.6 },
+      scale: { from: 0.9, to: 1.1 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    logos = this.physics.add.group();
+    this.time.addEvent({ delay: 900, callback: () => spawnLogo(this), loop: true });
+
+    scoreText = this.add.text(16, 16, 'SCORE: 0', { fontSize: '20px', fill: '#00ffff', fontFamily: 'monospace' });
+
+    // --- COLLISION ---
+    this.physics.add.overlap(player, logos, (p, l) => {
+      handleHit(this, l);
+    });
+
+    // --- CONTROL SETUP ---
+    const leftBtn = document.getElementById('btn-left');
+    const rightBtn = document.getElementById('btn-right');
+    leftBtn.addEventListener('touchstart', () => moveLeft = true);
+    leftBtn.addEventListener('touchend', () => moveLeft = false);
+    rightBtn.addEventListener('touchstart', () => moveRight = true);
+    rightBtn.addEventListener('touchend', () => moveRight = false);
+
+    this.input.keyboard.on('keydown-LEFT', () => moveLeft = true);
+    this.input.keyboard.on('keyup-LEFT', () => moveLeft = false);
+    this.input.keyboard.on('keydown-RIGHT', () => moveRight = true);
+    this.input.keyboard.on('keyup-RIGHT', () => moveRight = false);
+
+    // --- IDLE FLOAT ANIMATION ---
+    this.tweens.add({
+      targets: player,
+      y: player.y - 8,
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    this.events.on('postupdate', () => {
+      aura.x = player.x;
+      aura.y = player.y - 60;
+    });
+  }
+
+  function update() {
+    if (moveLeft) player.setVelocityX(-SPEED);
+    else if (moveRight) player.setVelocityX(SPEED);
+    else player.setVelocityX(0);
+
+    bg.tilePositionY -= 0.4;
+  }
+
+  function spawnLogo(scene) {
+    const x = Phaser.Math.Between(60, config.width - 60);
+    const logo = logos.create(x, -60, 'logo');
+    logo.setVelocityY(Phaser.Math.Between(180, 320));
+    logo.setScale(0.35);
+  }
+
+  function handleHit(scene, logo) {
+    if (isSlashing) return;
+    isSlashing = true;
+
+    const slashSound = scene.sound.add('slash', { volume: 0.8 });
+    slashSound.play().catch(()=>{});
+
+    const isCritical = Math.random() < 0.1;
+    if (isCritical) {
+      const overSound = scene.sound.add('overdrive', { volume: 0.9 });
+      overSound.play().catch(()=>{});
+      scene.cameras.main.flash(100, 255, 200, 50);
+    }
+
+    player.setTexture('player_slash');
+    scene.cameras.main.shake(90, 0.005);
+
+    const pts = isCritical ? 60 : Phaser.Math.Between(20, 35);
+    score += pts;
+    scoreText.setText(`SCORE: ${score}${isCritical ? ' ✦CRIT!✦' : ''}`);
+
+    scene.time.delayedCall(300, () => {
+      player.setTexture('player_idle');
+      isSlashing = false;
+    });
+
+    logo.destroy();
+  }
+  </script>
+</body>
+</html>      background: rgba(0,255,255,0.35);
       transform: scale(0.9);
     }
     #btn-left { left: 25px; }
