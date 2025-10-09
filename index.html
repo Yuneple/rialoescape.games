@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>RIALO ESCAPE — Yuura Slash Mode ⚔️</title>
+  <title>RIALO ESCAPE — Yuura Slash ⚔️</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       background: #000;
-      height: 100%;
       overflow: hidden;
+      height: 100%;
+      width: 100%;
     }
     #game-container {
       width: 100vw;
@@ -30,11 +31,140 @@
       font-size: 30px;
       text-align: center;
       line-height: 70px;
-      z-index: 2000;
-      transition: 0.15s;
+      z-index: 3000;
+      transition: 0.1s;
       user-select: none;
     }
     .control-btn:active {
+      background: rgba(0,255,255,0.35);
+      transform: scale(0.9);
+    }
+    #btn-left { left: 25px; }
+    #btn-right { right: 25px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.js"></script>
+</head>
+<body>
+  <div id="game-container"></div>
+  <div id="btn-left" class="control-btn">◀</div>
+  <div id="btn-right" class="control-btn">▶</div>
+
+  <script>
+  const config = {
+    type: Phaser.AUTO,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    parent: 'game-container',
+    physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
+    scene: { preload, create, update }
+  };
+
+  let player, bg, logos, scoreText, aura, slashSound, overdriveSound;
+  let moveLeft = false, moveRight = false, isSlashing = false;
+  let score = 0;
+  const SPEED = 240;
+
+  const game = new Phaser.Game(config);
+
+  function preload() {
+    this.load.image('bg', 'assets/bg.png');
+    this.load.image('logo', 'assets/logo.png');
+    this.load.image('player_idle', 'assets/player/player_idle.png');
+    this.load.image('player_slash', 'assets/player/player_slash.png');
+    this.load.audio('slash', 'assets/sound/energy-slash.wav');
+    this.load.audio('overdrive', 'assets/sound/overdrive.wav');
+  }
+
+  function create() {
+    bg = this.add.tileSprite(0, 0, config.width, config.height, 'bg').setOrigin(0).setDepth(0);
+
+    player = this.physics.add.sprite(config.width / 2, config.height - 60, 'player_idle').setDepth(10);
+    player.setOrigin(0.5, 1);
+    player.setScale(0.5);
+    player.setCollideWorldBounds(true);
+
+    aura = this.add.circle(player.x, player.y - 50, 70, 0x9900ff, 0.25).setDepth(9);
+    this.tweens.add({
+      targets: aura,
+      alpha: { from: 0.3, to: 0.6 },
+      scale: { from: 0.9, to: 1.1 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1
+    });
+
+    logos = this.physics.add.group();
+    this.time.addEvent({ delay: 800, callback: () => spawnLogo(this), loop: true });
+
+    scoreText = this.add.text(14, 14, 'SCORE: 0', { fontFamily: 'monospace', fontSize: 22, fill: '#00ffff' }).setDepth(12);
+
+    this.physics.add.overlap(player, logos, (p, l) => { handleHit(this, l); });
+
+    slashSound = this.sound.add('slash', { volume: 0.9 });
+    overdriveSound = this.sound.add('overdrive', { volume: 0.7 });
+
+    // kontrol tombol
+    const leftBtn = document.getElementById('btn-left');
+    const rightBtn = document.getElementById('btn-right');
+    leftBtn.addEventListener('touchstart', () => moveLeft = true);
+    leftBtn.addEventListener('touchend', () => moveLeft = false);
+    rightBtn.addEventListener('touchstart', () => moveRight = true);
+    rightBtn.addEventListener('touchend', () => moveRight = false);
+
+    this.input.keyboard.on('keydown-LEFT', () => moveLeft = true);
+    this.input.keyboard.on('keyup-LEFT', () => moveLeft = false);
+    this.input.keyboard.on('keydown-RIGHT', () => moveRight = true);
+    this.input.keyboard.on('keyup-RIGHT', () => moveRight = false);
+
+    this.events.on('postupdate', () => {
+      aura.x = player.x;
+      aura.y = player.y - 50;
+    });
+  }
+
+  function update() {
+    if (moveLeft) player.setVelocityX(-SPEED);
+    else if (moveRight) player.setVelocityX(SPEED);
+    else player.setVelocityX(0);
+
+    bg.tilePositionY -= 0.4;
+  }
+
+  function spawnLogo(scene) {
+    const x = Phaser.Math.Between(50, config.width - 50);
+    const logo = logos.create(x, -60, 'logo');
+    logo.setVelocityY(Phaser.Math.Between(180, 300));
+    logo.setScale(0.35);
+  }
+
+  function handleHit(scene, logo) {
+    if (isSlashing) return;
+    isSlashing = true;
+
+    const crit = Math.random() < 0.12;
+    slashSound.play().catch(()=>{});
+    if (crit) {
+      overdriveSound.play().catch(()=>{});
+      scene.cameras.main.flash(100, 255, 180, 80);
+    }
+
+    player.setTexture('player_slash');
+    scene.cameras.main.shake(100, 0.007);
+
+    const pts = crit ? 60 : Phaser.Math.Between(20, 35);
+    score += pts;
+    scoreText.setText(`SCORE: ${score}${crit ? ' ✦CRIT!' : ''}`);
+
+    scene.time.delayedCall(250, () => {
+      player.setTexture('player_idle');
+      isSlashing = false;
+    });
+
+    logo.destroy();
+  }
+  </script>
+</body>
+</html>    .control-btn:active {
       background: rgba(0,255,255,0.3);
       transform: scale(0.9);
     }
