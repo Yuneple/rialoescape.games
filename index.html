@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>RIALO ESCAPE — Phaser Button Fix</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>RIALO ESCAPE — FINAL MOVE + SOUND FIX</title>
 <style>
 html,body{
   margin:0;
@@ -12,9 +12,9 @@ html,body{
   height:100%;
   overflow:hidden;
   background:#000;
-  font-family:monospace;
   touch-action:none;
   user-select:none;
+  font-family:monospace;
 }
 #game-wrapper{
   width:100vw;
@@ -32,9 +32,135 @@ canvas{display:block;}
 
 <script>
 class RialoScene extends Phaser.Scene {
-  constructor() { super('RialoScene'); }
+  constructor(){ super('RialoScene'); }
 
-  preload() {
+  preload(){
+    this.load.image('bg','assets/bg.png');
+    this.load.image('player','assets/player.png');
+    this.load.image('logo','assets/logo.png');
+    this.load.audio('slash','assets/sound/energy-slash.wav');
+  }
+
+  create(){
+    const { width, height } = this.scale;
+
+    // Background
+    this.bg = this.add.image(width/2,height/2,'bg').setDisplaySize(width,height);
+
+    // Player
+    this.player = this.physics.add.sprite(width/2,height*0.85,'player');
+    this.player.setDisplaySize(width*0.25,width*0.25);
+    this.player.setCollideWorldBounds(true);
+    this.player.body.setAllowGravity(false);
+    this.player.setDepth(10);
+
+    // Falling Logos
+    this.logos = this.physics.add.group();
+    this.time.addEvent({
+      delay:900,
+      loop:true,
+      callback:()=>{
+        const x = Phaser.Math.Between(60,width-60);
+        const logo = this.logos.create(x,-50,'logo');
+        logo.setVelocityY(Phaser.Math.Between(230,300));
+        logo.setScale(Phaser.Math.FloatBetween(0.05,0.08));
+        logo.setDepth(2);
+      }
+    });
+
+    // Score
+    this.score = 0;
+    this.scoreText = this.add.text(20,20,'SCORE: 0',{fontSize:'22px',fill:'#00ffff'}).setDepth(20);
+
+    // Slash Sound
+    this.slashSound = this.sound.add('slash',{volume:0.7});
+
+    // Collision detection
+    this.physics.add.overlap(this.player,this.logos,(p,l)=>{
+      l.destroy();
+      const gain = Phaser.Math.Between(20,35);
+      this.score += gain;
+      this.scoreText.setText(`SCORE: ${this.score}`);
+      this.slashSound.play();
+    });
+
+    // === Kontrol virtual ===
+    const btnSize = width * 0.2;
+    const btnY = height * 0.9;
+
+    this.leftZone = this.add.zone(btnSize/2 + 30, btnY, btnSize, btnSize)
+      .setOrigin(0.5)
+      .setInteractive({ cursor: 'pointer' });
+    this.rightZone = this.add.zone(width - btnSize/2 - 30, btnY, btnSize, btnSize)
+      .setOrigin(0.5)
+      .setInteractive({ cursor: 'pointer' });
+
+    // Tombol visual
+    this.add.circle(this.leftZone.x, btnY, btnSize/2, 0x00ffff, 0.25).setDepth(5);
+    this.add.circle(this.rightZone.x, btnY, btnSize/2, 0x00ffff, 0.25).setDepth(5);
+    this.add.text(this.leftZone.x - 15, btnY - 15, '◀', { fontSize: '32px', fill: '#00ffff' }).setDepth(6);
+    this.add.text(this.rightZone.x - 15, btnY - 15, '▶', { fontSize: '32px', fill: '#00ffff' }).setDepth(6);
+
+    // Gerakan default
+    this.moveDir = 0;
+
+    const startMove = (dir) => {
+      this.moveDir = dir;
+      this.player.setVelocityX(dir * 350);
+    };
+    const stopMove = () => {
+      this.moveDir = 0;
+      this.player.setVelocityX(0);
+    };
+
+    // Handle tap tombol
+    this.leftZone.on('pointerdown',()=>startMove(-1));
+    this.rightZone.on('pointerdown',()=>startMove(1));
+    this.leftZone.on('pointerup',stopMove);
+    this.rightZone.on('pointerup',stopMove);
+    this.leftZone.on('pointerout',stopMove);
+    this.rightZone.on('pointerout',stopMove);
+
+    // Keyboard fallback
+    this.input.keyboard.on('keydown-LEFT',()=>startMove(-1));
+    this.input.keyboard.on('keydown-RIGHT',()=>startMove(1));
+    this.input.keyboard.on('keyup',stopMove);
+  }
+
+  update(){
+    // fallback movement
+    if(this.moveDir!==0 && this.player){
+      this.player.setVelocityX(this.moveDir * 350);
+    }
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  parent: 'game-wrapper',
+  backgroundColor: '#000000',
+  scale: {
+    mode: Phaser.Scale.RESIZE,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: window.innerWidth,
+    height: window.innerHeight
+  },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 0 }, debug: false }
+  },
+  scene: [RialoScene]
+};
+
+window.addEventListener('load',()=>{
+  const game = new Phaser.Game(config);
+  window.addEventListener('resize',()=>{
+    game.scale.resize(window.innerWidth,window.innerHeight);
+  });
+});
+</script>
+</body>
+</html>  preload() {
     this.load.image('bg','assets/bg.png');
     this.load.image('player','assets/player.png');
     this.load.image('logo','assets/logo.png');
