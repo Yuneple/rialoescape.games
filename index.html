@@ -3,28 +3,41 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>RIALO ESCAPE — Move Fix</title>
+<title>RIALO ESCAPE — Layout Fix v4.0</title>
 <style>
+*{box-sizing:border-box;}
 html,body{
   height:100%;
   margin:0;
+  padding:0;
   background:#000;
   color:#00ffff;
   font-family:monospace;
-  overflow:hidden;
+  overflow:hidden;  /* ⛔ stop scrolling */
   touch-action:none;
   user-select:none;
 }
-#game-container{width:100%;height:100vh;overflow:hidden;position:relative;}
+#game-container{
+  width:100vw;
+  height:100vh;
+  overflow:hidden;
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* Tombol kontrol */
 .control-btn{
-  position:absolute;
-  bottom:20px;
-  width:80px;height:80px;
+  position:fixed;
+  bottom:6vh;
+  width:16vw;height:16vw;
+  max-width:90px;max-height:90px;
   background:rgba(0,255,255,0.15);
   border:2px solid rgba(0,255,255,0.4);
   border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  font-size:30px;color:#00ffff;
+  font-size:6vw;color:#00ffff;
   z-index:1000;
   transition:background 0.15s,transform 0.1s;
 }
@@ -32,9 +45,110 @@ html,body{
   background:rgba(0,255,255,0.35);
   transform:scale(0.95);
 }
-#btn-left{left:20px;}
-#btn-right{right:20px;}
+#btn-left{left:5vw;}
+#btn-right{right:5vw;}
 </style>
+<script src="https://unpkg.com/phaser@3.70.0/dist/phaser.js"></script>
+</head>
+<body>
+<div id="game-container"></div>
+<div id="btn-left" class="control-btn">◀</div>
+<div id="btn-right" class="control-btn">▶</div>
+
+<script>
+class RialoScene extends Phaser.Scene {
+  constructor() { super('RialoScene'); }
+
+  preload() {
+    this.load.image('bg', 'assets/bg.png');
+    this.load.image('player', 'assets/player.png');
+    this.load.image('logo', 'assets/logo.png');
+  }
+
+  create() {
+    const { width, height } = this.scale;
+
+    // Background
+    this.bg = this.add.image(width/2, height/2, 'bg');
+    this.bg.setDisplaySize(width, height);
+
+    // Player
+    this.player = this.physics.add.sprite(width/2, height*0.85, 'player');
+    this.player.setDisplaySize(width*0.3, width*0.3);
+    this.player.setCollideWorldBounds(true);
+    this.player.body.setAllowGravity(false);
+
+    // Logos jatuh
+    this.logos = this.physics.add.group();
+    this.time.addEvent({
+      delay: 1000,
+      callback: () => {
+        const x = Phaser.Math.Between(50, width - 50);
+        const logo = this.logos.create(x, -50, 'logo');
+        logo.setVelocityY(220);
+        logo.setScale(Phaser.Math.FloatBetween(0.08, 0.15));
+      },
+      loop: true
+    });
+
+    // Kontrol
+    this.moveDir = 0;
+    const startMove = (dir) => this.moveDir = dir;
+    const stopMove = () => this.moveDir = 0;
+
+    ['touchstart','mousedown'].forEach(e=>{
+      document.getElementById('btn-left').addEventListener(e,()=>startMove(-1));
+      document.getElementById('btn-right').addEventListener(e,()=>startMove(1));
+    });
+    ['touchend','mouseup','touchcancel'].forEach(e=>{
+      document.getElementById('btn-left').addEventListener(e,stopMove);
+      document.getElementById('btn-right').addEventListener(e,stopMove);
+    });
+
+    // Keyboard
+    this.input.keyboard.on('keydown-LEFT',()=>this.moveDir=-1);
+    this.input.keyboard.on('keydown-RIGHT',()=>this.moveDir=1);
+    this.input.keyboard.on('keyup-LEFT',stopMove);
+    this.input.keyboard.on('keyup-RIGHT',stopMove);
+  }
+
+  update() {
+    const speed = 400;
+    if (this.player && this.player.body) {
+      this.player.setVelocityX(this.moveDir * speed);
+    }
+  }
+}
+
+// Game config
+const config = {
+  type: Phaser.AUTO,
+  parent: 'game-container',
+  scale: {
+    mode: Phaser.Scale.RESIZE,  // 🧩 auto resize full viewport
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  width: window.innerWidth,
+  height: window.innerHeight,
+  backgroundColor: '#000',
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 0 }, debug: false }
+  },
+  scene: [RialoScene]
+};
+
+window.addEventListener('load', () => {
+  const game = new Phaser.Game(config);
+
+  // Responsive resize handler
+  window.addEventListener('resize', () => {
+    game.scale.resize(window.innerWidth, window.innerHeight);
+  });
+});
+</script>
+</body>
+</html></style>
 <script src="https://unpkg.com/phaser@3.70.0/dist/phaser.js"></script>
 </head>
 <body>
