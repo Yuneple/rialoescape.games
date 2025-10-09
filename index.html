@@ -1,40 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>RIALO FINAL MOVE FIX</title>
-<style>
-html,body{
-  height:100%;margin:0;background:#000;color:#00ffff;font-family:monospace;
-  overflow:hidden;touch-action:none;user-select:none;
-}
-#game-container{width:100%;height:100vh;overflow:hidden;position:relative;}
-.control-btn{
-  position:absolute;
-  bottom:20px;
-  width:80px;height:80px;
-  background:rgba(0,255,255,0.15);
-  border:2px solid rgba(0,255,255,0.4);
-  border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:30px;color:#00ffff;
-  z-index:1000;
-  transition:background 0.15s,transform 0.1s;
-}
-.control-btn:active{background:rgba(0,255,255,0.35);transform:scale(0.95);}
-#btn-left{left:20px;}
-#btn-right{right:20px;}
-</style>
-<script src="https://unpkg.com/phaser@3.70.0/dist/phaser.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EtherTower Mini Game</title>
+  <style>
+    body {
+      background: #000;
+      color: white;
+      font-family: sans-serif;
+      text-align: center;
+    }
+
+    canvas {
+      background: #111;
+      display: block;
+      margin: 20px auto;
+      border: 2px solid #555;
+      border-radius: 8px;
+    }
+
+    #controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    button {
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+      border: none;
+      border-radius: 10px;
+      background: #333;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #555;
+    }
+  </style>
 </head>
 <body>
-<div id="game-container"></div>
-<div id="btn-left" class="control-btn">◀</div>
-<div id="btn-right" class="control-btn">▶</div>
+  <h1>🏙️ EtherTower - PNG Player Movement Demo</h1>
 
-<script>
-class RialoScene extends Phaser.Scene {
+  <canvas id="gameCanvas" width="800" height="450"></canvas>
+
+  <div id="controls">
+    <button id="left">⬅️</button>
+    <button id="up">⬆️</button>
+    <button id="down">⬇️</button>
+    <button id="right">➡️</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // === Load assets ===
+    const bg = new Image();
+    bg.src = "assets/bg.png";
+
+    const playerImg = new Image();
+    playerImg.src = "assets/player.png";
+
+    const moveSound = new Audio("assets/sound/overdrive.wav");
+
+    // === Player settings ===
+    let playerX = 350;
+    let playerY = 200;
+    const playerSize = 70;
+    const speed = 10;
+
+    // === Draw everything ===
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(playerImg, playerX, playerY, playerSize, playerSize);
+    }
+
+    // === Movement logic ===
+    function movePlayer(dx, dy) {
+      playerX += dx;
+      playerY += dy;
+
+      // Batasi agar tidak keluar canvas
+      if (playerX < 0) playerX = 0;
+      if (playerY < 0) playerY = 0;
+      if (playerX + playerSize > canvas.width)
+        playerX = canvas.width - playerSize;
+      if (playerY + playerSize > canvas.height)
+        playerY = canvas.height - playerSize;
+
+      // mainkan suara gerak
+      moveSound.currentTime = 0;
+      moveSound.play();
+
+      draw();
+    }
+
+    // === Controls ===
+    document.getElementById("left").onclick = () => movePlayer(-speed, 0);
+    document.getElementById("right").onclick = () => movePlayer(speed, 0);
+    document.getElementById("up").onclick = () => movePlayer(0, -speed);
+    document.getElementById("down").onclick = () => movePlayer(0, speed);
+
+    // === Keyboard support ===
+    document.addEventListener("keydown", (e) => {
+      switch (e.key) {
+        case "ArrowLeft": movePlayer(-speed, 0); break;
+        case "ArrowRight": movePlayer(speed, 0); break;
+        case "ArrowUp": movePlayer(0, -speed); break;
+        case "ArrowDown": movePlayer(0, speed); break;
+      }
+    });
+
+    // === Start game when assets loaded ===
+    playerImg.onload = () => {
+      draw();
+    };
+  </script>
+</body>
+</html>
+
+
+yang ini coba replace kanclass RialoScene extends Phaser.Scene {
   constructor() { super('RialoScene'); }
 
   preload() {
