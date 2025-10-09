@@ -1,40 +1,172 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>RIALO ESCAPE — Slash Animation Final</title>
-<style>
-html,body{
-  margin:0;padding:0;width:100%;height:100%;
-  overflow:hidden;background:#000;
-  font-family:monospace;
-  touch-action:none;user-select:none;
-}
-#game-wrapper{width:100vw;height:100vh;position:fixed;top:0;left:0;}
-canvas{display:block;}
-</style>
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>RIALO ESCAPE — Yuura Slash Mode ⚔️</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      height: 100%;
+      overflow: hidden;
+    }
+    #game-container {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+    .control-btn {
+      position: fixed;
+      bottom: 30px;
+      width: 65px;
+      height: 65px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      color: #0ff;
+      font-size: 28px;
+      text-align: center;
+      line-height: 65px;
+      z-index: 2000;
+      transition: 0.15s;
+    }
+    .control-btn:active {
+      background: rgba(0,255,255,0.35);
+      transform: scale(0.9);
+    }
+    #btn-left { left: 25px; }
+    #btn-right { right: 25px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.js"></script>
 </head>
 <body>
-<div id="game-wrapper"></div>
+  <div id="game-container"></div>
+  <div id="btn-left" class="control-btn">◀</div>
+  <div id="btn-right" class="control-btn">▶</div>
 
-<script>
-class RialoScene extends Phaser.Scene {
-  constructor(){ super('RialoScene'); }
+  <script>
+  const config = {
+    type: Phaser.AUTO,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    parent: 'game-container',
+    physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
+    scene: { preload, create, update }
+  };
 
-  preload(){
-    this.load.image('bg','assets/bg.png');
-    this.load.image('player','assets/player.png');
-    this.load.image('logo','assets/logo.png');
-    this.load.audio('slash','assets/sound/energy-slash.wav');
+  let player, bg, logos, scoreText, bgMusic;
+  let isSlashing = false;
+  let score = 0;
+  let moveLeft = false, moveRight = false;
+  const SPEED = 260;
+
+  const game = new Phaser.Game(config);
+
+  function preload() {
+    this.load.image('bg', 'assets/bg.png');
+    this.load.image('logo', 'assets/logo.png');
+    this.load.image('player_idle', 'assets/player/player_idle.png');
+    this.load.image('player_slash', 'assets/player/player_slash.png');
+
+    this.load.audio('music', 'assets/sound/Chiptronical.ogg');
+    this.load.audio('slash', 'assets/sound/energy-slash.wav');
+    this.load.audio('overdrive', 'assets/sound/overdrive.wav');
   }
 
-  create(){
-    const { width, height } = this.scale;
+  function create() {
+    bg = this.add.tileSprite(0, 0, config.width, config.height, 'bg').setOrigin(0).setScrollFactor(0);
 
-    // Background
-    this.bg = this.add.image(width/2,height/2,'bg').setDisplaySize(width,height);
+    bgMusic = this.sound.add('music', { loop: true, volume: 0.35 });
+    bgMusic.play().catch(()=>{});
+
+    player = this.physics.add.sprite(config.width/2, config.height - 120, 'player_idle').setDepth(5);
+    player.setScale(0.45).setCollideWorldBounds(true);
+
+    logos = this.physics.add.group();
+    this.time.addEvent({ delay: 900, callback: () => spawnLogo(this), loop: true });
+
+    scoreText = this.add.text(16, 16, 'SCORE: 0', { fontSize: '20px', fill: '#00ffff', fontFamily: 'monospace' });
+
+    // collision
+    this.physics.add.overlap(player, logos, (p, l) => {
+      handleHit(this, l);
+    });
+
+    // controls
+    const leftBtn = document.getElementById('btn-left');
+    const rightBtn = document.getElementById('btn-right');
+    leftBtn.addEventListener('touchstart', () => moveLeft = true);
+    leftBtn.addEventListener('touchend', () => moveLeft = false);
+    rightBtn.addEventListener('touchstart', () => moveRight = true);
+    rightBtn.addEventListener('touchend', () => moveRight = false);
+
+    this.input.keyboard.on('keydown-LEFT', () => moveLeft = true);
+    this.input.keyboard.on('keyup-LEFT', () => moveLeft = false);
+    this.input.keyboard.on('keydown-RIGHT', () => moveRight = true);
+    this.input.keyboard.on('keyup-RIGHT', () => moveRight = false);
+
+    // idle floating animation
+    this.tweens.add({
+      targets: player,
+      y: player.y - 10,
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  function update() {
+    if (moveLeft) player.setVelocityX(-SPEED);
+    else if (moveRight) player.setVelocityX(SPEED);
+    else player.setVelocityX(0);
+
+    bg.tilePositionY -= 0.4; // background motion
+  }
+
+  function spawnLogo(scene) {
+    const x = Phaser.Math.Between(50, config.width - 50);
+    const logo = logos.create(x, -60, 'logo');
+    logo.setVelocityY(Phaser.Math.Between(180, 320));
+    logo.setScale(0.45);
+  }
+
+  function handleHit(scene, logo) {
+    if (isSlashing) return;
+    isSlashing = true;
+
+    const slashSound = scene.sound.add('slash', { volume: 0.8 });
+    slashSound.play().catch(()=>{});
+
+    const isCritical = Math.random() < 0.1;
+    if (isCritical) {
+      const overSound = scene.sound.add('overdrive', { volume: 0.9 });
+      overSound.play().catch(()=>{});
+      scene.cameras.main.flash(120, 255, 200, 100);
+    }
+
+    // switch pose
+    player.setTexture('player_slash');
+    scene.cameras.main.shake(80, 0.004);
+
+    // add score
+    const pts = isCritical ? 60 : Phaser.Math.Between(20, 35);
+    score += pts;
+    scoreText.setText(`SCORE: ${score}${isCritical ? ' ✦CRIT!✦' : ''}`);
+
+    scene.time.delayedCall(300, () => {
+      player.setTexture('player_idle');
+      isSlashing = false;
+    });
+
+    logo.destroy();
+  }
+  </script>
+</body>
+</html>    this.bg = this.add.image(width/2,height/2,'bg').setDisplaySize(width,height);
 
     // Player (anjing lo 😎)
     this.player = this.physics.add.sprite(width/2,height*0.85,'player');
