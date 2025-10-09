@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>RIALO SYSTEM ESCAPE v3.1</title>
+<title>RIALO ESCAPE — Final Move Fix</title>
 <style>
 html,body{
   height:100%;
@@ -16,15 +16,6 @@ html,body{
   user-select:none;
 }
 #game-container{width:100%;height:100vh;overflow:hidden;position:relative;}
-#boot-screen{
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  flex-direction:column;background:#000;z-index:1000;transition:opacity .8s;
-}
-#boot-logo{width:160px;margin-bottom:10px;filter:drop-shadow(0 0 10px #00ffff);}
-#boot-text{color:#9af;text-align:center;font-size:14px}
-.small{font-size:12px;color:#99f}
-
-/* Control Buttons */
 .control-btn{
   position:absolute;
   bottom:20px;
@@ -34,7 +25,109 @@ html,body{
   border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   font-size:30px;color:#00ffff;
-  z-index:2000;
+  z-index:1000;
+  transition:background 0.15s,transform 0.1s;
+}
+.control-btn:active{
+  background:rgba(0,255,255,0.35);
+  transform:scale(0.95);
+}
+#btn-left{left:20px;}
+#btn-right{right:20px;}
+</style>
+<script src="https://unpkg.com/phaser@3.70.0/dist/phaser.js"></script>
+</head>
+<body>
+<div id="game-container"></div>
+<div id="btn-left" class="control-btn">◀</div>
+<div id="btn-right" class="control-btn">▶</div>
+
+<script>
+let moveDir = 0;
+
+function startGame(){
+  const WIDTH = window.innerWidth;
+  const HEIGHT = window.innerHeight;
+  const config = {
+    type: Phaser.AUTO,
+    parent: 'game-container',
+    width: WIDTH,
+    height: HEIGHT,
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    backgroundColor: '#000000',
+    physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+    scene: { preload, create, update }
+  };
+  const game = new Phaser.Game(config);
+  let player, logos;
+
+  function preload(){
+    this.load.image('bg', 'assets/bg.png');
+    this.load.image('player', 'assets/player.png');
+    this.load.image('logo', 'assets/logo.png');
+  }
+
+  function create(){
+    const scene = this;
+    scene.add.image(WIDTH/2, HEIGHT/2, 'bg').setDisplaySize(WIDTH, HEIGHT);
+
+    player = scene.physics.add.sprite(WIDTH/2, HEIGHT*0.85, 'player');
+    player.setCollideWorldBounds(true);
+    player.setDisplaySize(WIDTH * 0.3, WIDTH * 0.3);
+    player.body.setAllowGravity(false);
+
+    // Simple movement event (touch)
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+
+    const startMove = dir => moveDir = dir;
+    const stopMove = () => moveDir = 0;
+
+    ['touchstart','mousedown'].forEach(e=>{
+      btnLeft.addEventListener(e,()=>startMove(-1));
+      btnRight.addEventListener(e,()=>startMove(1));
+    });
+    ['touchend','mouseup','touchcancel'].forEach(e=>{
+      btnLeft.addEventListener(e,stopMove);
+      btnRight.addEventListener(e,stopMove);
+    });
+
+    // Keyboard
+    scene.input.keyboard.on('keydown-LEFT',()=>moveDir=-1);
+    scene.input.keyboard.on('keydown-RIGHT',()=>moveDir=1);
+    scene.input.keyboard.on('keyup-LEFT',stopMove);
+    scene.input.keyboard.on('keyup-RIGHT',stopMove);
+
+    // Group of falling logos
+    logos = scene.physics.add.group();
+    scene.time.addEvent({
+      delay: 1000,
+      callback: () => {
+        const x = Phaser.Math.Between(50, WIDTH - 50);
+        const logo = logos.create(x, -50, 'logo');
+        logo.setVelocityY(200);
+        logo.setScale(Phaser.Math.FloatBetween(0.08, 0.15));
+      },
+      loop: true
+    });
+
+    // Collision effect (just remove)
+    scene.physics.add.overlap(player, logos, (pl, logo)=>{
+      logo.destroy();
+    });
+  }
+
+  function update(){
+    if (!player) return;
+    const speed = 300;
+    player.setVelocityX(moveDir * speed);
+  }
+}
+
+window.onload = startGame;
+</script>
+</body>
+</html>  z-index:2000;
   transition:background 0.15s,transform 0.1s;
 }
 .control-btn:active{
