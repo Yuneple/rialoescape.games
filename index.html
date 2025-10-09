@@ -1,40 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EtherTower Mini Game</title>
-  <style>
-    body {
-      background: #000;
-      color: white;
-      font-family: sans-serif;
-      text-align: center;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>RIALO ESCAPE — Move Fix</title>
+<style>
+html,body{
+  height:100%;
+  margin:0;
+  background:#000;
+  color:#00ffff;
+  font-family:monospace;
+  overflow:hidden;
+  touch-action:none;
+  user-select:none;
+}
+#game-container{width:100%;height:100vh;overflow:hidden;position:relative;}
+.control-btn{
+  position:absolute;
+  bottom:20px;
+  width:80px;height:80px;
+  background:rgba(0,255,255,0.15);
+  border:2px solid rgba(0,255,255,0.4);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;color:#00ffff;
+  z-index:1000;
+  transition:background 0.15s,transform 0.1s;
+}
+.control-btn:active{
+  background:rgba(0,255,255,0.35);
+  transform:scale(0.95);
+}
+#btn-left{left:20px;}
+#btn-right{right:20px;}
+</style>
+<script src="https://unpkg.com/phaser@3.70.0/dist/phaser.js"></script>
+</head>
+<body>
+<div id="game-container"></div>
+<div id="btn-left" class="control-btn">◀</div>
+<div id="btn-right" class="control-btn">▶</div>
 
-    canvas {
-      background: #111;
-      display: block;
-      margin: 20px auto;
-      border: 2px solid #555;
-      border-radius: 8px;
-    }
+<script>
+class RialoScene extends Phaser.Scene {
+  constructor() { super('RialoScene'); }
 
-    #controls {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-    }
+  preload() {
+    this.load.image('bg', 'assets/bg.png');
+    this.load.image('player', 'assets/player.png');
+    this.load.image('logo', 'assets/logo.png');
+  }
 
-    button {
-      width: 60px;
-      height: 60px;
-      font-size: 24px;
-      border: none;
-      border-radius: 10px;
-      background: #333;
-      color: white;
-      cursor: pointer;
+  create() {
+    const { width, height } = this.scale;
+
+    // Background
+    this.add.image(width/2, height/2, 'bg').setDisplaySize(width, height);
+
+    // Player
+    this.player = this.physics.add.sprite(width/2, height*0.85, 'player');
+    this.player.setDisplaySize(width*0.3, width*0.3);
+    this.player.setCollideWorldBounds(true);
+    this.player.body.setAllowGravity(false);
+
+    // Logos (jatuh)
+    this.logos = this.physics.add.group();
+    this.time.addEvent({
+      delay: 1000,
+      callback: () => {
+        const x = Phaser.Math.Between(50, width - 50);
+        const logo = this.logos.create(x, -50, 'logo');
+        logo.setVelocityY(200);
+        logo.setScale(Phaser.Math.FloatBetween(0.08, 0.15));
+      },
+      loop: true
+    });
+
+    // Control setup
+    this.moveDir = 0;
+    const startMove = (dir) => this.moveDir = dir;
+    const stopMove = () => this.moveDir = 0;
+
+    // Touch
+    ['touchstart','mousedown'].forEach(e=>{
+      document.getElementById('btn-left').addEventListener(e,()=>startMove(-1));
+      document.getElementById('btn-right').addEventListener(e,()=>startMove(1));
+    });
+    ['touchend','mouseup','touchcancel'].forEach(e=>{
+      document.getElementById('btn-left').addEventListener(e,stopMove);
+      document.getElementById('btn-right').addEventListener(e,stopMove);
+    });
+
+    // Keyboard
+    this.input.keyboard.on('keydown-LEFT',()=>this.moveDir=-1);
+    this.input.keyboard.on('keydown-RIGHT',()=>this.moveDir=1);
+    this.input.keyboard.on('keyup-LEFT',stopMove);
+    this.input.keyboard.on('keyup-RIGHT',stopMove);
+  }
+
+  update() {
+    const speed = 400;
+    if (this.player && this.player.body) {
+      this.player.setVelocityX(this.moveDir * speed);
+    }
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  parent: 'game-container',
+  width: window.innerWidth,
+  height: window.innerHeight,
+  backgroundColor: '#000000',
+  physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+  scene: [RialoScene]
+};
+
+window.addEventListener('load', () => new Phaser.Game(config));
+</script>
+</body>
+</html>      cursor: pointer;
       transition: background 0.2s;
     }
 
